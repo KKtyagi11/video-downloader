@@ -8,6 +8,7 @@
     "setup": "node scripts/setup.js",
     "update-ytdlp": "node scripts/setup.js",
     "icon": "python build/make_icon.py",
+    "screenshot": "electron scripts/screenshot.js",
     "start": "electron .",
     "dist": "npm run setup && electron-builder --win",
     "dist:all": "npm run setup && electron-builder -wml"

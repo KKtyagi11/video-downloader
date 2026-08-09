@@ -1,0 +1,75 @@
+name: Release
+
+# Push a tag like v1.1.0 and this builds the Windows installer and attaches it
+# to the matching GitHub release. Run manually from the Actions tab to test the
+# build without publishing anything.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: electron/package-lock.json
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        working-directory: electron
+        run: npm ci
+
+      - name: Vendor yt-dlp
+        working-directory: electron
+        run: npm run setup
+
+      - name: Build installer
+        working-directory: electron
+        run: npx electron-builder --win --publish never
+
+      # Fail loudly here rather than uploading nothing later.
+      - name: Verify build output
+        shell: bash
+        working-directory: electron
+        run: |
+          ls -la dist/
+          test -n "$(find dist -maxdepth 1 -name '*Setup*.exe' -print -quit)" \
+            || { echo "No installer produced"; exit 1; }
+
+      - name: Upload installer to the release
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        working-directory: electron
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          # The release may not exist yet if the tag was pushed directly.
+          gh release view "$TAG" >/dev/null 2>&1 \
+            || gh release create "$TAG" --title "$TAG" --generate-notes
+          find dist -maxdepth 1 -name '*Setup*.exe' -print0 \
+            | xargs -0 -I{} gh release upload "$TAG" "{}" --clobber
+
+      # On manual runs there is no release to attach to, so keep the artifact.
+      - name: Save installer as a build artifact
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: electron/dist/*Setup*.exe
+          if-no-files-found: error

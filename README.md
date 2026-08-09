@@ -6,6 +6,10 @@
 
 Paste links, pick a quality, get files. No ads, no upload limits, no website in the middle.
 
+[**Download for Windows →**](../../releases/latest)
+
+<img src="docs/screenshot.png" alt="The download queue, showing items downloading, processing, finished and failed" width="900">
+
 </div>
 
 ---
@@ -91,11 +95,18 @@ Package an installer:
 npm run dist      # Windows NSIS installer into electron/dist/
 ```
 
-Regenerate the icon after changing its colours:
+Regenerate the icon after changing its colours, or the README screenshot after
+changing the UI:
 
 ```bash
-npm run icon      # needs Pillow: pip install pillow
+npm run icon        # needs Pillow: pip install pillow
+npm run screenshot  # renders the real UI with sample rows into docs/
 ```
+
+Releases are built by [GitHub Actions](.github/workflows/release.yml): push a
+tag like `v1.1.0` and the installer is built on a clean Windows runner and
+attached to the release automatically. Run the workflow manually from the
+Actions tab to test a build without publishing.
 
 ## How it works
 
