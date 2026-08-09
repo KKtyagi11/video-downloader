@@ -1,0 +1,24 @@
+# Node
+node_modules/
+
+# Build output (electron-builder). Note: electron/build/ is SOURCE — icons and
+# the icon generator live there and are committed.
+electron/dist/
+
+# Vendored third-party code — fetched by `npm run setup`
+electron/engine/vendor/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Editor / OS
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
+
+# Local
+*.log
+downloads/

@@ -1,0 +1,39 @@
+{
+  "name": "video-downloader",
+  "version": "1.0.0",
+  "description": "Desktop downloader for YouTube, X, Instagram and friends",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "setup": "node scripts/setup.js",
+    "update-ytdlp": "node scripts/setup.js",
+    "icon": "python build/make_icon.py",
+    "start": "electron .",
+    "dist": "npm run setup && electron-builder --win",
+    "dist:all": "npm run setup && electron-builder -wml"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.local.videodownloader",
+    "productName": "Video Downloader",
+    "files": ["main.js", "preload.js", "renderer/**", "engine/**", "build/icon.*"],
+    "asarUnpack": ["engine/**"],
+    "win": { "target": "nsis", "icon": "build/icon.ico" },
+    "mac": { "target": "dmg", "icon": "build/icon.png" },
+    "linux": { "target": "AppImage", "icon": "build/icon.png" },
+    "nsis": {
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "uninstallDisplayName": "Video Downloader",
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Video Downloader"
+    }
+  }
+}

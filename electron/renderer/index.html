@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' https: data:; font-src 'self';"
+    />
+    <title>Video Downloader</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="mark" aria-hidden="true"></span>
+        <h1>Video Downloader</h1>
+      </div>
+      <div class="engine" id="engine-badge" data-state="loading">Starting engine…</div>
+    </header>
+
+    <section class="composer">
+      <div class="input-wrap">
+        <textarea
+          id="urls"
+          rows="2"
+          spellcheck="false"
+          placeholder="Paste one or more links — YouTube, X, Instagram, TikTok, Reddit… (one per line)"
+        ></textarea>
+        <button class="ghost" id="paste" title="Paste from clipboard">Paste</button>
+      </div>
+
+      <div class="controls">
+        <label class="field">
+          <span>Quality</span>
+          <select id="format"></select>
+        </label>
+
+        <label class="field">
+          <span>Cookies from <button type="button" class="info" id="privacy-info" title="What does this do?">i</button></span>
+          <select id="browser">
+            <option value="none">No sign-in</option>
+            <option value="chrome">Chrome</option>
+            <option value="edge">Edge</option>
+            <option value="firefox">Firefox</option>
+            <option value="brave">Brave</option>
+            <option value="opera">Opera</option>
+            <option value="vivaldi">Vivaldi</option>
+          </select>
+        </label>
+
+        <label class="field grow">
+          <span>Save to</span>
+          <div class="folder">
+            <input id="dest" type="text" spellcheck="false" />
+            <button class="ghost" id="browse">Browse</button>
+            <button class="ghost" id="open-folder" title="Open folder">Open</button>
+          </div>
+        </label>
+
+        <label class="check" title="Off by default: a link inside a playlist grabs just that video">
+          <input type="checkbox" id="playlist" />
+          <span>Whole playlist</span>
+        </label>
+
+        <button class="primary" id="download">Download</button>
+      </div>
+    </section>
+
+    <main id="queue" class="queue">
+      <div class="empty" id="empty">
+        <p class="big">Nothing queued</p>
+        <p>Paste a link above and hit Download. Up to three run at once.</p>
+      </div>
+    </main>
+
+    <div class="sheet" id="privacy-sheet" hidden>
+      <div class="sheet-inner" role="dialog" aria-labelledby="privacy-title">
+        <h2 id="privacy-title">About “Cookies from”</h2>
+        <p>
+          Some posts are only served to a signed-in account — private X posts, most of
+          Instagram, age-restricted YouTube. Picking a browser lets the downloader borrow
+          that browser's existing session for the request.
+        </p>
+        <ul>
+          <li>Cookies are read from the browser profile <strong>only while a download runs</strong>, kept in memory, and sent solely to the site being downloaded from.</li>
+          <li>They are <strong>never written to disk</strong> by this app and never leave your machine by any other route.</li>
+          <li>Saved settings contain the browser's <em>name</em> only — e.g. <code>"browser": "chrome"</code>.</li>
+          <li>This window's own cookie store is emptied at every launch and blocked from being written to.</li>
+          <li>If you share this app with someone, it carries none of your data — settings live outside the build and are created fresh per machine.</li>
+        </ul>
+        <p class="muted">
+          Leave it on “No sign-in” unless a download actually fails asking for a login.
+          Close the chosen browser first — Chrome and Edge lock their cookie database while running.
+        </p>
+        <button class="primary" id="privacy-close">Got it</button>
+      </div>
+    </div>
+
+    <footer class="statusbar">
+      <span id="status">Ready</span>
+      <span class="spacer"></span>
+      <button class="ghost small" id="clear-finished">Clear finished</button>
+    </footer>
+
+    <template id="card-tpl">
+      <article class="card" data-status="queued">
+        <div class="thumb"><img alt="" /><span class="fallback"></span></div>
+        <div class="body">
+          <div class="row1">
+            <p class="title"></p>
+            <span class="badge"></span>
+          </div>
+          <div class="bar"><i></i></div>
+          <div class="row2">
+            <span class="meta"></span>
+            <span class="actions">
+              <button class="ghost small act-cancel">Cancel</button>
+              <button class="ghost small act-reveal">Show file</button>
+              <button class="ghost small act-retry">Retry</button>
+            </span>
+          </div>
+        </div>
+      </article>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+</html>
