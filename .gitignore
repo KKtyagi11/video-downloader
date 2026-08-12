@@ -8,6 +8,15 @@ electron/dist/
 # Vendored third-party code — fetched by `npm run setup`
 electron/engine/vendor/
 
+# Android build output and locally downloaded APKs
+android/build/
+android/app/build/
+android/out/
+android/.gradle/
+android/local.properties
+*.apk
+*.aab
+
 # Python
 .venv/
 __pycache__/

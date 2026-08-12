@@ -16,6 +16,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -28,6 +30,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -72,6 +75,9 @@ fun HomeScreen(sharedUrl: MutableState<String?>) {
     var quality by rememberSaveable { mutableStateOf(Quality.BEST) }
     var qualityOpen by remember { mutableStateOf(false) }
 
+    val engine by Ytdlp.state.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
+
     val notifications = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { }
@@ -80,6 +86,9 @@ fun HomeScreen(sharedUrl: MutableState<String?>) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             notifications.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
+        // Warm the engine while the user is still pasting, so the first
+        // download doesn't stall behind a yt-dlp update.
+        scope.launch { Ytdlp.ensureReady(context) }
     }
 
     // A link arriving from the share sheet starts downloading immediately —
@@ -105,7 +114,35 @@ fun HomeScreen(sharedUrl: MutableState<String?>) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Video Downloader", fontWeight = FontWeight.SemiBold) },
+                title = {
+                    Column {
+                        Text("Video Downloader", fontWeight = FontWeight.SemiBold, fontSize = 17.sp)
+                        Text(
+                            engine.message,
+                            color = if (engine.ready) TextMuted else Accent,
+                            fontSize = 11.sp,
+                        )
+                    }
+                },
+                actions = {
+                    if (engine.busy) {
+                        CircularProgressIndicator(
+                            Modifier.padding(end = 16.dp).size(20.dp),
+                            color = Accent,
+                            strokeWidth = 2.dp,
+                        )
+                    } else {
+                        IconButton(onClick = {
+                            scope.launch { Ytdlp.ensureReady(context, forceUpdate = true) }
+                        }) {
+                            Icon(
+                                Icons.Filled.Refresh,
+                                contentDescription = "Update yt-dlp",
+                                tint = TextMuted,
+                            )
+                        }
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Surface2,
                     titleContentColor = TextPrimary,

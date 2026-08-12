@@ -75,7 +75,10 @@ class DownloadService : Service() {
     private suspend fun runJob(job: Job) {
         val id = job.id
         try {
-            Ytdlp.init(applicationContext)
+            // First run downloads a current yt-dlp; later runs return immediately.
+            Downloads.update(id) { it.copy(status = Status.RESOLVING, detail = "Preparing engine…") }
+            notifyProgress(id)
+            Ytdlp.ensureReady(applicationContext)
 
             Downloads.update(id) { it.copy(status = Status.RESOLVING, detail = "Reading link…") }
             notifyProgress(id)

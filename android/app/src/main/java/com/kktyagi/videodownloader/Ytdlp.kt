@@ -10,8 +10,27 @@ import com.yausername.ffmpeg.FFmpeg
 import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLRequest
 import java.io.File
+import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 private const val TAG = "Ytdlp"
+private const val PREFS = "engine"
+private const val KEY_LAST_UPDATE = "last_update_check"
+
+/** yt-dlp refuses to run once its build is ~90 days old, so re-check daily. */
+private val UPDATE_INTERVAL_MS = TimeUnit.DAYS.toMillis(1)
+
+data class EngineState(
+    val ready: Boolean = false,
+    val busy: Boolean = false,
+    val version: String? = null,
+    val message: String = "Starting engine…",
+)
 
 /**
  * Thin wrapper around youtubedl-android, which bundles yt-dlp, a Python runtime
@@ -23,6 +42,10 @@ object Ytdlp {
 
     @Volatile
     private var initialised = false
+    private val lock = Mutex()
+
+    private val _state = MutableStateFlow(EngineState())
+    val state: StateFlow<EngineState> = _state
 
     @Synchronized
     fun init(context: Context) {
@@ -30,6 +53,56 @@ object Ytdlp {
         YoutubeDL.getInstance().init(context)
         FFmpeg.getInstance().init(context)
         initialised = true
+    }
+
+    /**
+     * Initialises the engine and keeps yt-dlp current.
+     *
+     * The version bundled inside youtubedl-android is frozen at the library's
+     * release date, and yt-dlp hard-fails once its build is older than ~90 days.
+     * So the first launch pulls the current release, and we re-check daily —
+     * which also picks up extractor fixes when a site changes its player.
+     *
+     * Safe to call from anywhere; concurrent callers wait on the same update.
+     */
+    suspend fun ensureReady(context: Context, forceUpdate: Boolean = false) {
+        lock.withLock {
+            withContext(Dispatchers.IO) {
+                if (!initialised) {
+                    _state.value = EngineState(message = "Starting engine…", busy = true)
+                    runCatching { init(context) }.onFailure {
+                        _state.value = EngineState(message = "Engine failed to start: ${it.message}")
+                        return@withContext
+                    }
+                }
+
+                val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                val last = prefs.getLong(KEY_LAST_UPDATE, 0L)
+                val due = forceUpdate || System.currentTimeMillis() - last > UPDATE_INTERVAL_MS
+
+                if (due) {
+                    _state.value = _state.value.copy(busy = true, message = "Updating yt-dlp…")
+                    val result = runCatching {
+                        YoutubeDL.getInstance().updateYoutubeDL(context, YoutubeDL.UpdateChannel.STABLE)
+                    }
+                    result.onSuccess {
+                        prefs.edit().putLong(KEY_LAST_UPDATE, System.currentTimeMillis()).apply()
+                    }.onFailure {
+                        // Offline or GitHub unreachable: carry on with what we have
+                        // rather than blocking downloads entirely.
+                        Log.w(TAG, "yt-dlp update failed", it)
+                    }
+                }
+
+                val version = runCatching { YoutubeDL.getInstance().version(context) }.getOrNull()
+                _state.value = EngineState(
+                    ready = true,
+                    busy = false,
+                    version = version,
+                    message = version?.let { "yt-dlp $it" } ?: "Ready",
+                )
+            }
+        }
     }
 
     /** Working directory for in-progress files, cleaned up after export. */
@@ -143,6 +216,8 @@ object Ytdlp {
                 "Network problem — check your connection and retry."
             "cannot parse data" in low || "unable to extract" in low ->
                 "The site served a page yt-dlp couldn't read. Try again in a moment."
+            "older than" in low && "days" in low ->
+                "The downloader is out of date. Tap the refresh icon at the top to update it."
             else -> raw.replace(Regex("\\u001B\\[[0-9;]*m"), "")
                 .replace(Regex("^ERROR:\\s*"), "")
                 .take(300)
